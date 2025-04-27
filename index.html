@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MediChat - Medication Assistant</title>
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#4CAF50">
-    <meta name="description" content="MediChat: Your personal medication and health assistant">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4712/4712109.png">
     <style>
         * {
             box-sizing: border-box;
@@ -253,24 +248,9 @@
             this.notificationInterval = null;
             this.isSoundEnabled = false;
 
-            this.geminiApiKey = 'AIzaSyDjWCg92bv-kn6U2ArSxBSGw1wpi3SdstA';
-
             this.setupEventListeners();
             this.loadMedications();
             this.initializeApp();
-            this.registerServiceWorker();
-        }
-
-        registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js').then(registration => {
-                        console.log('Service Worker registered with scope:', registration.scope);
-                    }).catch(error => {
-                        console.error('Service Worker registration failed:', error);
-                    });
-                });
-            }
         }
 
         setupEventListeners() {
@@ -406,41 +386,8 @@
                 'View Medications',
                 'Check Drug Info',
                 'Find Medical Stores',
-                'Find Testing Labs',
-                'Insurance Information',
-                'Lab Result Interpretation',
-                'Symptom Checker',
-                'Health Tips'
+                'Find Testing Labs'
             ]);
-        }
-
-        async callGeminiApi(prompt) {
-            try {
-                const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + this.geminiApiKey, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'MediChat/1.0'
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: prompt
-                            }]
-                        }]
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Gemini API error: ${response.status}`);
-                }
-
-                const data = await response.json();
-                return data.candidates[0].content.parts[0].text;
-            } catch (error) {
-                console.error('Gemini API call failed:', error);
-                return 'Sorry, I couldn’t process your request right now. Please try again later.';
-            }
         }
 
         handleUserInput() {
@@ -489,15 +436,6 @@
                     break;
                 case 'editMedicationNotify':
                     this.handleEditMedicationNotify(input);
-                    break;
-                case 'insuranceInfo':
-                    this.handleInsuranceInfo(input);
-                    break;
-                case 'labResultInterpretation':
-                    this.handleLabResultInterpretation(input);
-                    break;
-                case 'symptomChecker':
-                    this.handleSymptomChecker(input);
                     break;
                 default:
                     if (input.toLowerCase() === 'hi' || input.toLowerCase() === 'hello') {
@@ -574,21 +512,6 @@
                 case 'Find Testing Labs':
                     this.findTestingLabs();
                     break;
-                case 'Insurance Information':
-                    this.addMessage('Please describe your insurance query (e.g., coverage details, claim process):');
-                    this.currentStep = 'insuranceInfo';
-                    break;
-                case 'Lab Result Interpretation':
-                    this.addMessage('Please enter your lab result details (e.g., "High cholesterol 240 mg/dL"):');
-                    this.currentStep = 'labResultInterpretation';
-                    break;
-                case 'Symptom Checker':
-                    this.addMessage('Please list your symptoms (e.g., "fever, cough, headache"):');
-                    this.currentStep = 'symptomChecker';
-                    break;
-                case 'Health Tips':
-                    this.generateHealthTips();
-                    break;
                 case 'Edit Medication':
                     this.viewMedicationsForEdit();
                     this.addMessage('Enter the number of the medication to edit (e.g., 1):');
@@ -643,18 +566,6 @@
                     this.addMessage('Enter the name of the medication:');
                     this.currentStep = 'drugInfoRequest';
                     break;
-                case 'Ask Another Insurance Question':
-                    this.addMessage('Please describe your insurance query:');
-                    this.currentStep = 'insuranceInfo';
-                    break;
-                case 'Interpret Another Lab Result':
-                    this.addMessage('Please enter your lab result details:');
-                    this.currentStep = 'labResultInterpretation';
-                    break;
-                case 'Check Another Symptom':
-                    this.addMessage('Please list your symptoms:');
-                    this.currentStep = 'symptomChecker';
-                    break;
                 case 'Once Daily':
                 case 'Twice Daily':
                 case 'Weekly':
@@ -680,67 +591,6 @@
                     }
                     break;
             }
-        }
-
-        async handleInsuranceInfo(query) {
-            const prompt = `You are a health insurance assistant. Provide clear, accurate, and concise information for the following insurance-related query: "${query}". If the query is about coverage, claims, or policy details, explain in simple terms and include general steps or considerations. Do not provide specific policy numbers or personal data.`;
-            const response = await this.callGeminiApi(prompt);
-            
-            const infoHTML = `
-                <div class="api-result">
-                    <strong>Insurance Information:</strong><br><br>
-                    ${response.replace(/\n/g, '<br>')}
-                </div>
-            `;
-            this.addMessage(infoHTML);
-            this.showOptions(['Ask Another Insurance Question', 'Back to Main Menu']);
-            this.currentStep = null;
-        }
-
-        async handleLabResultInterpretation(result) {
-            const prompt = `You are a medical assistant. Interpret the following lab result in simple, patient-friendly language: "${result}". Explain what the result means, whether it's within normal range, and any potential implications. Include a disclaimer that this is for informational purposes and not a substitute for professional medical advice.`;
-            const response = await this.callGeminiApi(prompt);
-            
-            const infoHTML = `
-                <div class="api-result">
-                    <strong>Lab Result Interpretation:</strong><br><br>
-                    ${response.replace(/\n/g, '<br>')}<br><br>
-                    <small>Disclaimer: This information is for educational purposes only. Consult your healthcare provider for professional advice.</small>
-                </div>
-            `;
-            this.addMessage(infoHTML);
-            this.showOptions(['Interpret Another Lab Result', 'Back to Main Menu']);
-            this.currentStep = null;
-        }
-
-        async handleSymptomChecker(symptoms) {
-            const prompt = `You are a medical symptom checker. Based on the following symptoms: "${symptoms}", suggest possible conditions in simple language. Provide a brief explanation of each condition and recommend consulting a healthcare professional. Include a disclaimer that this is not a diagnosis.`;
-            const response = await this.callGeminiApi(prompt);
-            
-            const infoHTML = `
-                <div class="api-result">
-                    <strong>Symptom Checker Results:</strong><br><br>
-                    ${response.replace(/\n/g, '<br>')}<br><br>
-                    <small>Disclaimer: This is not a medical diagnosis. Please consult a healthcare provider for accurate assessment.</small>
-                </div>
-            `;
-            this.addMessage(infoHTML);
-            this.showOptions(['Check Another Symptom', 'Back to Main Menu']);
-            this.currentStep = null;
-        }
-
-        async generateHealthTips() {
-            const prompt = `You are a health assistant. Generate 3 personalized, actionable health tips for daily wellness. Keep each tip concise, practical, and suitable for a general audience. Format as a numbered list.`;
-            const response = await this.callGeminiApi(prompt);
-            
-            const infoHTML = `
-                <div class="api-result">
-                    <strong>Daily Health Tips:</strong><br><br>
-                    ${response.replace(/\n/g, '<br>')}
-                </div>
-            `;
-            this.addMessage(infoHTML);
-            this.showOptions(['Health Tips', 'Back to Main Menu']);
         }
 
         findMedicalStores() {
@@ -826,7 +676,7 @@
                     let pharmacies = data.elements.filter(e => e.tags && e.tags.amenity === 'pharmacy');
                     let hospitals = data.elements.filter(e => e.tags && e.tags.amenity === 'hospital');
 
-                    const cityKey = `${cityName.toLowerCase()}_${Date.now()}`;
+                    const cityKey = `${cityName.toLowerCase()}_${Date.now()}`; // Unique key per search
                     if (!this._storage.shownFacilities[cityKey]) {
                         this._storage.shownFacilities[cityKey] = { pharmacies: [], hospitals: [] };
                     }
@@ -879,7 +729,6 @@
                 } else {
                     this.addMessage(`No medical facilities found in ${cityName}.`);
                 }
-           
             } catch (error) {
                 let errorMessage = `Could not find medical facilities in ${cityName}. `;
                 if (error.message.includes('Nominatim API failed')) {
@@ -952,7 +801,7 @@
                     let pharmacies = data.elements.filter(e => e.tags && e.tags.amenity === 'pharmacy');
                     let hospitals = data.elements.filter(e => e.tags && e.tags.amenity === 'hospital');
 
-                    const pincodeKey = `${pincode}_${Date.now()}`;
+                    const pincodeKey = `${pincode}_${Date.now()}`; // Unique key per search
                     if (!this._storage.shownFacilities[pincodeKey]) {
                         this._storage.shownFacilities[pincodeKey] = { pharmacies: [], hospitals: [] };
                     }
@@ -1079,7 +928,7 @@
                         e.tags["healthcare"] === "laboratory"
                     );
 
-                    const cityKey = `${cityName.toLowerCase()}_${Date.now()}`;
+                    const cityKey = `${cityName.toLowerCase()}_${Date.now()}`; // Unique key per search
                     if (!this._storage.shownLabs[cityKey]) {
                         this._storage.shownLabs[cityKey] = [];
                     }
@@ -1189,7 +1038,7 @@
                         e.tags["healthcare"] === "laboratory"
                     );
 
-                    const pincodeKey = `${pincode}_${Date.now()}`;
+                    const pincodeKey = `${pincode}_${Date.now()}`; // Unique key per search
                     if (!this._storage.shownLabs[pincodeKey]) {
                         this._storage.shownLabs[pincodeKey] = [];
                     }
